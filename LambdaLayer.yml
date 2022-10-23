@@ -1,0 +1,80 @@
+---
+Parameters:
+  InstanceName:
+    Type: String
+    Description: Enter the name of your instance.
+    Default: LinuxInstance
+
+Resources:
+  # EC2 Instance
+  Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-09d3b3274b6c5d4aa # Static AMI ID chosen from List of AMIs in the console
+      InstanceType: t2.micro
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroups:
+        - !Ref SSHSecurityGroup
+      # Install Python, Pandas and Publish Lambda Layer
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash 
+          sudo amazon-linux-extras install python3.8
+          curl -O https://bootstrap.pypa.io/get-pip.py
+          python3.8 get-pip.py --user
+          mkdir -p home/ec2-user/python
+          cd home/ec2-user
+          python3.8 -m pip install pandas -t python/
+          zip -r layer.zip python
+          aws lambda publish-layer-version --layer-name pandas-layer --zip-file fileb://layer.zip --compatible-runtimes python3.8 --region us-east-1
+      Tags:
+        - Key: Name
+          Value: !Ref InstanceName
+
+  # Instance Profile
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Join ["_", [!Ref InstanceName, "Profile"]]
+      Path: /
+      Roles:
+        - !Ref InstanceRole
+
+  # Instance Role
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ["_", [!Ref InstanceName, "EC2PublishLambdaLayer"]]
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: !Join ["_", [!Ref InstanceName, "Policy"]]
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "lambda:PublishLayerVersion"
+                Resource: "*"
+
+  # EC2 security group
+  SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SSH and HTTP
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+        - CidrIp: 0.0.0.0/0
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
