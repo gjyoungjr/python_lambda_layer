@@ -36,7 +36,7 @@ You can deploy the CloudFormation Stack using AWS CLI. For more information abou
 
 
 ## AWS CLI Command
-```
+```bash
 aws cloudformation deploy --template-file <path_to_file> --stack-name <stack_name> --capabilities CAPABILITY_NAMED_IAM
 
 ```
