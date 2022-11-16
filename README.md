@@ -16,7 +16,7 @@
 
 <div align="left">
 
-# Lambda Layers
+# ⚡️ Lambda Layers
 
 This repo contains a CloudFormation YAML script that creates a Linux EC2 Instance, builds and publish an AWS Python Lambda Layer. 
 </div>
